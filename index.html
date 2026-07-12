@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App - WhatsApp Clone</title>
+    <!-- Tailwind CSS untuk styling yang cepat dan responsif -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome untuk Icon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        // Konfigurasi Tailwind untuk warna khusus WhatsApp
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        wa: {
+                            light: '#efeae2',
+                            primary: '#00a884',
+                            primaryDark: '#008069',
+                            dark: '#111b21',
+                            darkPanel: '#202c33',
+                            darkPanelHover: '#2a3942',
+                            bubbleIn: '#ffffff',
+                            bubbleOut: '#d9fdd3',
+                            bubbleInDark: '#202c33',
+                            bubbleOutDark: '#005c4b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Styles untuk elemen spesifik */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        /* Background pattern untuk area chat (Mirip WhatsApp) */
+        .chat-bg {
+            background-color: #efeae2;
+            background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
+            background-repeat: repeat;
+            opacity: 0.9;
+        }
+        .dark .chat-bg {
+            background-color: #0b141a;
+            opacity: 0.1;
+        }
+
+        /* Scrollbar kustom */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+
+        /* Mencegah highlight teks yang tidak perlu */
+        .no-select { user-select: none; }
+        
+        /* Transisi halus untuk layar */
+        .screen-transition { transition: all 0.3s ease-in-out; }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 h-screen w-full overflow-hidden flex items-center justify-center transition-colors duration-300">
+
+    <!-- APP CONTAINER (Mirip WhatsApp Web UI yang dibungkus di layar besar) -->
+    <div class="w-full h-full max-w-7xl md:h-[95vh] md:border md:border-gray-300 md:dark:border-gray-700 bg-white dark:bg-wa-darkPanel md:rounded-lg shadow-xl overflow-hidden flex relative">
+        
+        <!-- ==================== SCREEN: LOGIN / REGISTER ==================== -->
+        <div id="auth-screen" class="absolute inset-0 z-50 bg-gray-50 dark:bg-wa-dark flex flex-col items-center justify-center p-4 screen-transition">
+            <div class="bg-white dark:bg-wa-darkPanel p-8 rounded-lg shadow-md w-full max-w-md text-center">
+                <i class="fab fa-whatsapp text-6xl text-wa-primary mb-4"></i>
+                <h1 id="auth-title" class="text-2xl font-bold text-gray-800 dark:text-white mb-2">Masuk ke Akun</h1>
+                <p id="auth-subtitle" class="text-gray-500 dark:text-gray-400 mb-6">Masukkan email dan password Anda.</p>
+                
+                <form id="auth-form" class="space-y-4">
+                    <input type="email" id="auth-email" required placeholder="Email (Misal: budi@email.com)" class="w-full px-4 py-3 rounded bg-gray-100 dark:bg-wa-dark text-gray-800 dark:text-white border-none focus:ring-2 focus:ring-wa-primary outline-none transition">
+                    <input type="text" id="auth-username" placeholder="Username (Hanya untuk daftar)" class="hidden w-full px-4 py-3 rounded bg-gray-100 dark:bg-wa-dark text-gray-800 dark:text-white border-none focus:ring-2 focus:ring-wa-primary outline-none transition">
+                    <input type="password" id="auth-password" required placeholder="Password (Min. 6 karakter)" class="w-full px-4 py-3 rounded bg-gray-100 dark:bg-wa-dark text-gray-800 dark:text-white border-none focus:ring-2 focus:ring-wa-primary outline-none transition">
+                    <button type="submit" id="auth-submit-btn" class="w-full bg-wa-primary hover:bg-wa-primaryDark text-white font-bold py-3 px-4 rounded transition shadow-sm">
+                        Masuk
+                    </button>
+                </form>
+                <div class="mt-4 text-sm text-gray-500 dark:text-gray-400">
+                    <button id="toggle-auth-mode" class="hover:text-wa-primary transition font-semibold">Belum punya akun? Daftar di sini</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== SCREEN: MAIN APP ==================== -->
+        <div id="main-screen" class="flex w-full h-full opacity-0 pointer-events-none screen-transition">
+            
+            <!-- LEFT PANEL: CONTACTS / SIDEBAR -->
+            <div id="sidebar" class="w-full md:w-[30%] lg:w-[35%] flex flex-col bg-white dark:bg-wa-darkPanel border-r border-gray-200 dark:border-gray-700 transition-all duration-300">
+                
+                <!-- Sidebar Header (Profile & Menu) -->
+                <div class="bg-gray-100 dark:bg-wa-dark h-16 flex items-center justify-between px-4 shrink-0">
+                    <div class="flex items-center gap-3 cursor-pointer" id="btn-profile">
+                        <img id="my-avatar" src="https://ui-avatars.com/api/?name=User&background=random" alt="Avatar" class="w-10 h-10 rounded-full object-cover border border-gray-300 dark:border-gray-600">
+                        <span id="my-name" class="font-semibold text-gray-800 dark:text-white truncate hidden lg:block">User</span>
+                    </div>
+                    <div class="flex gap-4 text-gray-500 dark:text-gray-300">
+                        <button id="btn-dark-mode" class="hover:text-wa-primary transition"><i class="fas fa-moon text-xl"></i></button>
+                        <button id="btn-logout" class="hover:text-red-500 transition"><i class="fas fa-sign-out-alt text-xl"></i></button>
+                    </div>
+                </div>
+
+                <!-- Search Bar -->
+                <div class="p-2 border-b border-gray-200 dark:border-gray-700">
+                    <div class="bg-gray-100 dark:bg-wa-dark flex items-center rounded-lg px-3 py-1.5">
+                        <i class="fas fa-search text-gray-400 text-sm"></i>
+                        <input type="text" id="search-contact" placeholder="Cari atau mulai chat baru" class="w-full bg-transparent border-none outline-none px-3 py-1 text-sm text-gray-700 dark:text-gray-200">
+                    </div>
+                </div>
+
+                <!-- Contact List -->
+                <div id="contacts-list" class="flex-1 overflow-y-auto bg-white dark:bg-wa-darkPanel">
+                    <!-- Loading State -->
+                    <div class="p-4 text-center text-gray-400 text-sm">
+                        <i class="fas fa-circle-notch fa-spin mr-2"></i>Memuat kontak...
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT PANEL: CHAT AREA -->
+            <div id="chat-area" class="hidden md:flex flex-col w-full md:w-[70%] lg:w-[65%] relative h-full bg-wa-light dark:bg-wa-dark">
+                
+                <!-- Default State (No Chat Selected) -->
+                <div id="empty-chat" class="absolute inset-0 flex flex-col items-center justify-center z-10 bg-wa-light dark:bg-wa-dark">
+                    <i class="fab fa-whatsapp text-8xl text-gray-300 dark:text-gray-600 mb-6"></i>
+                    <h2 class="text-3xl text-gray-500 dark:text-gray-400 font-light">WhatsApp Web Clone</h2>
+                    <p class="text-gray-400 mt-4">Pilih kontak untuk mulai mengirim pesan.</p>
+                </div>
+
+                <!-- Active Chat Container -->
+                <div id="active-chat" class="hidden flex-col h-full w-full relative z-20">
+                    <!-- Chat Header -->
+                    <div class="bg-gray-100 dark:bg-wa-darkPanel h-16 flex items-center justify-between px-4 shadow-sm shrink-0">
+                        <div class="flex items-center gap-3">
+                            <!-- Tombol back untuk mobile -->
+                            <button id="btn-back" class="md:hidden text-gray-500 dark:text-gray-300 mr-1">
+                                <i class="fas fa-arrow-left text-xl"></i>
+                            </button>
+                            <img id="chat-avatar" src="" alt="Avatar" class="w-10 h-10 rounded-full object-cover">
+                            <div class="flex flex-col">
+                                <span id="chat-name" class="font-semibold text-gray-800 dark:text-white">Nama Kontak</span>
+                                <span id="chat-status" class="text-xs text-gray-500 dark:text-gray-400">Offline</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-4 text-gray-500 dark:text-gray-300">
+                            <button class="hover:text-wa-primary"><i class="fas fa-search"></i></button>
+                            <button class="hover:text-wa-primary"><i class="fas fa-ellipsis-v"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Chat Messages Area (with background pattern) -->
+                    <div class="flex-1 overflow-y-auto p-4 md:p-6 relative chat-bg" id="messages-container">
+                        <div id="messages-list" class="flex flex-col gap-2 max-w-3xl mx-auto z-10 relative">
+                            <!-- Pesan akan di-render di sini oleh JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Chat Input Area -->
+                    <div class="bg-gray-100 dark:bg-wa-darkPanel px-4 py-3 flex items-center gap-2 shrink-0">
+                        <button class="text-gray-500 dark:text-gray-400 hover:text-wa-primary text-xl px-2"><i class="far fa-smile"></i></button>
+                        <button class="text-gray-500 dark:text-gray-400 hover:text-wa-primary text-xl px-2"><i class="fas fa-paperclip"></i></button>
+                        <form id="message-form" class="flex-1 flex gap-2">
+                            <input type="text" id="message-input" autocomplete="off" placeholder="Ketik pesan..." class="w-full rounded-lg bg-white dark:bg-wa-darkPanelHover border-none outline-none px-4 py-2.5 text-gray-700 dark:text-gray-200 shadow-sm focus:ring-1 focus:ring-wa-primary transition">
+                            <button type="submit" class="text-wa-primary hover:text-wa-primaryDark text-xl px-2 bg-transparent">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== FIREBASE & APP LOGIC ==================== -->
+    <script type="module">
+        // 1. IMPORT FIREBASE SDK (Menggunakan versi Modular Vanilla JS)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, onAuthStateChanged, updateProfile, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, addDoc, updateDoc, serverTimestamp, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 2. KONFIGURASI FIREBASE
+        // CATATAN: Untuk di-deploy ke Netlify/GitHub Pages milik Anda, ganti 'firebaseConfig' 
+        // dengan konfigurasi dari Firebase Console Anda (Project Settings -> General -> Your apps)
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : {
+                // ISI DENGAN KONFIGURASI ANDA JIKA DEPLOY SENDIRI
+                // apiKey: "API_KEY_ANDA",
+                // authDomain: "DOMAIN_ANDA",
+                // projectId: "PROJECT_ID_ANDA",
+                // ...
+            };
+
+        // Identitas unik aplikasi untuk lingkungan sandbox (Abaikan jika deploy sendiri)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-whatsapp-clone';
+
+        // Inisialisasi Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // State Global
+        let currentUser = null;
+        let activeChatUserId = null;
+        let currentChatId = null;
+        let usersData = [];
+        let messagesUnsubscribe = null;
+        let usersUnsubscribe = null;
+
+        // 3. FUNGSI UTILITAS UNTUK PATH FIRESTORE
+        // Lingkungan ini mewajibkan struktur path tertentu. 
+        // JIKA DEPLOY SENDIRI: Ubah fungsi ini untuk mengembalikan referensi collection biasa.
+        // Contoh untuk deploy sendiri: return collection(db, 'users');
+        const getUsersCollectionRef = () => collection(db, 'artifacts', appId, 'public', 'data', 'users');
+        const getMessagesCollectionRef = () => collection(db, 'artifacts', appId, 'public', 'data', 'messages');
+
+        // 4. AUTENTIKASI
+        let isLoginMode = true; // Flag untuk mode Login atau Register
+
+        const initAuth = async () => {
+            try {
+                // Di lingkungan sandbox, coba login dengan custom token bawaan jika ada
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                }
+                // Jika tidak ada token (misal setelah di-deploy), biarkan onAuthStateChanged menampilkan form
+            } catch (error) {
+                console.error("Gagal inisialisasi Auth:", error);
+            }
+        };
+
+        // Toggle form antara Login dan Register
+        document.getElementById('toggle-auth-mode').addEventListener('click', () => {
+            isLoginMode = !isLoginMode;
+            const title = document.getElementById('auth-title');
+            const subtitle = document.getElementById('auth-subtitle');
+            const usernameInput = document.getElementById('auth-username');
+            const submitBtn = document.getElementById('auth-submit-btn');
+            const toggleBtn = document.getElementById('toggle-auth-mode');
+
+            if (isLoginMode) {
+                title.textContent = 'Masuk ke Akun';
+                subtitle.textContent = 'Masukkan email dan password Anda.';
+                usernameInput.classList.add('hidden');
+                usernameInput.removeAttribute('required');
+                submitBtn.textContent = 'Masuk';
+                toggleBtn.textContent = 'Belum punya akun? Daftar di sini';
+            } else {
+                title.textContent = 'Daftar Akun Baru';
+                subtitle.textContent = 'Buat akun untuk mulai mengobrol.';
+                usernameInput.classList.remove('hidden');
+                usernameInput.setAttribute('required', 'true');
+                submitBtn.textContent = 'Daftar';
+                toggleBtn.textContent = 'Sudah punya akun? Masuk di sini';
+            }
+        });
+
+        // Listen perubahan status login
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                if (user.displayName) {
+                    await setupUserSession(user.displayName);
+                } else {
+                    // Fallback nama jika belum diset dengan benar
+                    await setupUserSession("User_" + user.uid.substring(0, 5));
+                }
+            } else {
+                // Tampilkan form login jika belum ada session
+                document.getElementById('auth-screen').classList.remove('opacity-0', 'pointer-events-none');
+                document.getElementById('main-screen').classList.add('opacity-0', 'pointer-events-none');
+            }
+        });
+
+        // Handle Form Login / Register Submit
+        document.getElementById('auth-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('auth-email').value.trim();
+            const password = document.getElementById('auth-password').value;
+            const username = document.getElementById('auth-username').value.trim();
+            
+            const submitBtn = document.getElementById('auth-submit-btn');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Memproses...';
+            submitBtn.disabled = true;
+
+            try {
+                if (isLoginMode) {
+                    // Proses Login dengan Firebase
+                    await signInWithEmailAndPassword(auth, email, password);
+                } else {
+                    // Proses Register Akun Baru dengan Firebase
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    // Update profile Auth untuk menyimpan Username dan Avatar
+                    await updateProfile(userCredential.user, { 
+                        displayName: username,
+                        photoURL: `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random`
+                    });
+                    // Refresh session manual setelah update profile
+                    await setupUserSession(username); 
+                }
+            } catch (error) {
+                let errorMsg = "Terjadi kesalahan.";
+                if (error.code === 'auth/email-already-in-use') errorMsg = "Email sudah terdaftar!";
+                else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') errorMsg = "Email atau password salah!";
+                else if (error.code === 'auth/weak-password') errorMsg = "Password terlalu lemah (min. 6 karakter)!";
+                alert(errorMsg + " (" + error.code + ")");
+            } finally {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Persiapan setelah login berhasil
+        async function setupUserSession(name) {
+            // Sembunyikan form login, tampilkan aplikasi utama
+            document.getElementById('auth-screen').classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                document.getElementById('main-screen').classList.remove('opacity-0', 'pointer-events-none');
+            }, 300);
+
+            // Update UI Profil saya
+            document.getElementById('my-name').textContent = name;
+            document.getElementById('my-avatar').src = currentUser.photoURL;
+
+            // Simpan/Update data user ke Firestore Realtime Database
+            const userDocRef = doc(getUsersCollectionRef(), currentUser.uid);
+            await setDoc(userDocRef, {
+                uid: currentUser.uid,
+                name: name,
+                photoURL: currentUser.photoURL,
+                email: currentUser.email || 'anonymous',
+                status: 'Available',
+                online: true,
+                lastSeen: Date.now()
+            }, { merge: true });
+
+            // Mulai memuat daftar kontak
+            loadContacts();
+        }
+
+        // Logout
+        document.getElementById('btn-logout').addEventListener('click', async () => {
+            if(currentUser) {
+                // Set status offline sebelum logout
+                const userDocRef = doc(getUsersCollectionRef(), currentUser.uid);
+                await updateDoc(userDocRef, { online: false, lastSeen: Date.now() });
+            }
+            if (usersUnsubscribe) usersUnsubscribe();
+            if (messagesUnsubscribe) messagesUnsubscribe();
+            await signOut(auth);
+            window.location.reload();
+        });
+
+
+        // 5. FITUR KONTAK REAL-TIME
+        function loadContacts() {
+            if (!currentUser) return;
+
+            usersUnsubscribe = onSnapshot(getUsersCollectionRef(), (snapshot) => {
+                usersData = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    // Jangan tampilkan diri sendiri di daftar kontak
+                    if (data.uid !== currentUser.uid) {
+                        usersData.push(data);
+                    }
+                });
+                renderContacts(usersData);
+            }, (error) => console.error("Error load contacts:", error));
+        }
+
+        function renderContacts(users) {
+            const listContainer = document.getElementById('contacts-list');
+            listContainer.innerHTML = ''; // Bersihkan list
+
+            if (users.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="p-8 text-center text-gray-400">
+                        <p>Belum ada pengguna lain.</p>
+                        <p class="text-sm mt-2">Buka tab baru untuk membuat akun kedua dan mulai chatting!</p>
+                    </div>`;
+                return;
+            }
+
+            users.forEach(user => {
+                const isOnline = user.online;
+                const activeClass = activeChatUserId === user.uid ? 'bg-gray-100 dark:bg-wa-darkPanelHover' : '';
+                
+                const contactEl = document.createElement('div');
+                contactEl.className = `flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-wa-darkPanelHover border-b border-gray-100 dark:border-gray-800 transition ${activeClass}`;
+                contactEl.onclick = () => openChat(user);
+
+                contactEl.innerHTML = `
+                    <div class="relative shrink-0">
+                        <img src="${user.photoURL}" alt="${user.name}" class="w-12 h-12 rounded-full object-cover">
+                        ${isOnline ? '<div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-wa-darkPanel rounded-full"></div>' : ''}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-baseline mb-1">
+                            <h3 class="font-semibold text-gray-800 dark:text-white truncate">${user.name}</h3>
+                            <span class="text-xs text-gray-500 dark:text-gray-400"></span>
+                        </div>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 truncate">${user.status || 'Tersedia'}</p>
+                    </div>
+                `;
+                listContainer.appendChild(contactEl);
+            });
+        }
+
+        // Pencarian Kontak
+        document.getElementById('search-contact').addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const filtered = usersData.filter(u => {
+                // Bisa mencari berdasarkan Nama (Username) atau Email pengguna
+                const nameMatch = u.name && u.name.toLowerCase().includes(term);
+                const emailMatch = u.email && u.email.toLowerCase().includes(term);
+                return nameMatch || emailMatch;
+            });
+            renderContacts(filtered);
+        });
+
+
+        // 6. FITUR CHAT (ONE-TO-ONE)
+        function openChat(user) {
+            activeChatUserId = user.uid;
+            
+            // Generate Chat ID yang unik dan konsisten antara 2 user
+            // Menggabungkan UID dan diurutkan agar ID-nya sama siapapun yang memulai
+            const uids = [currentUser.uid, user.uid].sort();
+            currentChatId = `${uids[0]}_${uids[1]}`;
+
+            // Update UI
+            document.getElementById('empty-chat').classList.add('hidden');
+            document.getElementById('active-chat').classList.remove('hidden');
+            document.getElementById('active-chat').classList.add('flex');
+            
+            document.getElementById('chat-name').textContent = user.name;
+            document.getElementById('chat-avatar').src = user.photoURL;
+            document.getElementById('chat-status').textContent = user.online ? 'Online' : 'Offline';
+
+            // Logika Tampilan Mobile (Sembunyikan sidebar, tampilkan chat)
+            if (window.innerWidth < 768) {
+                document.getElementById('sidebar').classList.add('hidden');
+                document.getElementById('chat-area').classList.remove('hidden');
+                document.getElementById('chat-area').classList.add('flex');
+            }
+
+            // Render ulang list kontak untuk menandai yang sedang aktif
+            renderContacts(usersData);
+
+            // Load pesan untuk chat ini
+            loadMessages(currentChatId);
+        }
+
+        // Tombol kembali (Khusus Mobile)
+        document.getElementById('btn-back').addEventListener('click', () => {
+            activeChatUserId = null;
+            document.getElementById('sidebar').classList.remove('hidden');
+            document.getElementById('chat-area').classList.add('hidden');
+            document.getElementById('chat-area').classList.remove('flex');
+            renderContacts(usersData);
+            if (messagesUnsubscribe) messagesUnsubscribe(); // Hentikan listen pesan
+        });
+
+        // Memuat dan Mendengarkan Pesan Secara Real-time
+        function loadMessages(chatId) {
+            // Bersihkan listener sebelumnya jika ada
+            if (messagesUnsubscribe) messagesUnsubscribe();
+
+            const messagesList = document.getElementById('messages-list');
+            messagesList.innerHTML = ''; // Clear chat area
+
+            // NOTE: Di lingkungan ini, dilarang menggunakan complex query seperti where() atau orderBy().
+            // Jadi kita tarik semua pesan di collection ini, lalu filter dan sort di memori browser.
+            messagesUnsubscribe = onSnapshot(getMessagesCollectionRef(), (snapshot) => {
+                if (!currentUser) return;
+                
+                let messages = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    data.id = doc.id;
+                    messages.push(data);
+                });
+
+                // Filter pesan hanya untuk chat ini
+                const chatMessages = messages.filter(m => m.chatId === chatId);
+                
+                // Urutkan berdasarkan waktu (timestamp)
+                chatMessages.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+                renderMessagesUI(chatMessages);
+            }, (error) => console.error("Error loading messages:", error));
+        }
+
+        function renderMessagesUI(messages) {
+            const messagesList = document.getElementById('messages-list');
+            const container = document.getElementById('messages-container');
+            
+            messagesList.innerHTML = ''; // Re-render all (bisa dioptimasi, tapi aman untuk demo)
+
+            messages.forEach(msg => {
+                const isMe = msg.senderId === currentUser.uid;
+                const bubbleClass = isMe 
+                    ? 'bg-wa-bubbleOut dark:bg-wa-bubbleOutDark rounded-tr-none self-end' 
+                    : 'bg-wa-bubbleIn dark:bg-wa-bubbleInDark rounded-tl-none self-start';
+                
+                // Format waktu
+                const time = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '...';
+                
+                // Tanda centang ganda biru (mockup read receipt)
+                const readIcon = isMe ? `<i class="fas fa-check-double text-blue-500 text-[10px] ml-1"></i>` : '';
+
+                const msgEl = document.createElement('div');
+                msgEl.className = `max-w-[85%] md:max-w-[70%] px-3 py-1.5 rounded-lg shadow-sm relative flex flex-col mb-1 ${bubbleClass}`;
+                
+                msgEl.innerHTML = `
+                    <span class="text-[15px] text-gray-800 dark:text-gray-100 break-words">${escapeHTML(msg.text)}</span>
+                    <div class="flex items-center justify-end gap-1 mt-1 -mb-1">
+                        <span class="text-[11px] text-gray-500 dark:text-gray-400 leading-none">${time}</span>
+                        ${readIcon}
+                    </div>
+                `;
+                messagesList.appendChild(msgEl);
+            });
+
+            // Scroll ke pesan terbawah setiap kali ada pesan baru
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Kirim Pesan
+        document.getElementById('message-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const inputEl = document.getElementById('message-input');
+            const text = inputEl.value.trim();
+            
+            if (!text || !currentChatId || !currentUser) return;
+            
+            inputEl.value = ''; // Kosongkan input langsung agar responsif
+
+            try {
+                // Tambahkan dokumen baru ke collection messages
+                await addDoc(getMessagesCollectionRef(), {
+                    chatId: currentChatId,
+                    senderId: currentUser.uid,
+                    text: text,
+                    timestamp: Date.now(),
+                    type: 'text',
+                    read: false
+                });
+            } catch (error) {
+                console.error("Gagal mengirim pesan:", error);
+                alert("Gagal mengirim pesan");
+            }
+        });
+
+
+        // 7. UI/UX: TEMA GELAP (DARK MODE)
+        const btnDarkMode = document.getElementById('btn-dark-mode');
+        const htmlEl = document.documentElement;
+        
+        // Cek preferensi sistem atau localStorage
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            htmlEl.classList.add('dark');
+            btnDarkMode.innerHTML = '<i class="fas fa-sun text-xl"></i>';
+        }
+
+        btnDarkMode.addEventListener('click', () => {
+            if (htmlEl.classList.contains('dark')) {
+                htmlEl.classList.remove('dark');
+                localStorage.theme = 'light';
+                btnDarkMode.innerHTML = '<i class="fas fa-moon text-xl"></i>';
+            } else {
+                htmlEl.classList.add('dark');
+                localStorage.theme = 'dark';
+                btnDarkMode.innerHTML = '<i class="fas fa-sun text-xl"></i>';
+            }
+        });
+
+        // 8. FUNGSI KEAMANAN
+        // Menghindari XSS saat merender teks dari user
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    "'": '&#39;',
+                    '"': '&quot;'
+                }[tag] || tag)
+            );
+        }
+
+        // Status Offline saat browser ditutup (Best effort)
+        window.addEventListener('beforeunload', () => {
+            if (currentUser) {
+                // Catatan: updateDoc di beforeunload mungkin tidak selalu reliable, 
+                // di produksi sebaiknya pakai Firebase Realtime Database Presence System
+                updateDoc(doc(getUsersCollectionRef(), currentUser.uid), { 
+                    online: false, 
+                    lastSeen: Date.now() 
+                });
+            }
+        });
+
+        // Mulai eksekusi
+        initAuth();
+    </script>
+</body>
+</html>
